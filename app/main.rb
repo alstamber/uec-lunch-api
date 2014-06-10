@@ -5,7 +5,6 @@ require 'nokogiri'
 require 'open-uri'
 require 'date'
 require 'active_record'
-require_relative './response.rb'
 
 module UECLunch
   ActiveRecord::Base.establish_connection(
@@ -20,7 +19,7 @@ module UECLunch
   end
 
   class Application < Sinatra::Base
-    configure do
+    configure :development do
       register Sinatra::Reloader
     end
 
@@ -37,19 +36,19 @@ module UECLunch
     end
 
     get '/uec-lunch/nishishoku/:date/menu.json' do
-      get_nishishoku_menu(params[:date])
+      get_menu('nishishoku', params[:date]){|d| NishishokuMenu.find_by_date(d)}
     end
 
     get '/uec-lunch/harmonia/:date/menu.json' do
-      get_harmonia_menu(params[:date])
+      get_menu('harmonia', params[:date]){|d| HarmoniaMenu.find_by_date(d)}
     end
 
     helpers do
-      def get_nishishoku_menu(date)
-        result = NishishokuMenu.find_by_date(date)
+      def get_menu(kind, date, &block)
+        result = block.call(date)
         if result == nil
-          if fetch_nishishoku_menu(date)
-            result = NishishokuMenu.find_by_date(date)
+          if store_menu(kind, date)
+            result = block.call(date)
             result.to_json(:except => [:id])
           else
             JSON.generate({:errors => [{:message => 'No such entry.', :code => 404}]})
@@ -59,39 +58,18 @@ module UECLunch
         end
       end
 
-      def get_harmonia_menu(date)
-        result = HarmoniaMenu.find_by_date(date)
-        if result == nil
-          if fetch_harmonia_menu(date)
-            result = HarmoniaMenu.find_by_date(date)
-            result.to_json(:except => [:id])
-          else
-            JSON.generate({:errors => [{:message => 'No such entry.', :code => 404}]})
-          end
+      def store_menu(kind, date)
+        if kind == 'nishishoku'
+          store_nishishoku_menu(date)
         else
-          result.to_json(:except => [:id])
+          store_harmonia_menu(date)
         end
       end
 
-      def fetch_nishishoku_menu(date)
-        menu_array = []
-        f = open('http://www009.upp.so-net.ne.jp/harmonia/nishishoku/')
-        html = f.read
-        f.close
-
-        doc = Nokogiri::HTML(html)
-        tbody = doc.xpath('//table[@cellpadding="5"]/tr')
-        date_row = tbody[0]
-        date_row.xpath('td').each_with_index do |td, i|
-          td_cont = td.content
-          month = DateTime.parse(date).month
-          day = DateTime.parse(date).day
-          if /#{month}月\s*#{day}日/ =~ td_cont
-            tbody.drop(1).each do |tr|
-              menu_array.push(tr.xpath('td')[i].content)
-            end
-          end
-        end
+      def store_nishishoku_menu(date)
+        html = fetch_html('http://www009.upp.so-net.ne.jp/harmonia/nishishoku/')
+        menu_array =
+          generate_menu_array(html, date)
         if menu_array.length != 0
           menu = NishishokuMenu.new
           menu.date = date
@@ -105,25 +83,10 @@ module UECLunch
         end
       end
 
-      def fetch_harmonia_menu(date)
-        menu_array = []
-        f = open('http://www009.upp.so-net.ne.jp/harmonia/')
-        html = f.read
-        f.close
-
-        doc = Nokogiri::HTML(html)
-        tbody = doc.xpath('//table[@cellpadding="5"]/tr')
-        date_row = tbody[0]
-        date_row.xpath('td').each_with_index do |td, i|
-          td_cont = td.content
-          month = DateTime.parse(date).month
-          day = DateTime.parse(date).day
-          if /#{month}月\s*#{day}日/ =~ td_cont
-            tbody.drop(1).each do |tr|
-              menu_array.push(tr.xpath('td')[i].content)
-            end
-          end
-        end
+      def store_harmonia_menu(date)
+        html = fetch_html('http://www009.upp.so-net.ne.jp/harmonia/')
+        menu_array =
+          generate_menu_array(html, date)
         if menu_array.length != 0
           menu = HarmoniaMenu.new
           menu.date = date
@@ -138,6 +101,30 @@ module UECLunch
         else
           false
         end
+      end
+
+      def fetch_html(url)
+        f = open(url)
+        html = f.read
+        f.close
+        html
+      end
+
+      def generate_menu_array(html, date)
+        menu_array = []
+        doc = Nokogiri::HTML(html)
+        tbody = doc.xpath('//table[@cellpadding="5"]/tr')
+        date_row = tbody[0]
+        date_row.xpath('td').each_with_index do |td, i|
+          month = DateTime.parse(date).month
+          day = DateTime.parse(date).day
+          if /#{month}月\s*#{day}日/ =~ td.content
+            tbody.drop(1).each do |tr|
+              menu_array.push(tr.xpath('td')[i].content)
+            end
+          end
+        end
+        menu_array
       end
     end
   end

@@ -24,6 +24,10 @@ module UECLunch
       register Sinatra::Reloader
     end
 
+    not_found do
+      JSON.generate({:errors => [{:message => 'Not found.', :code => 404}]})
+    end
+
     get '/' do
       JSON.generate({message: 'It works!'})
     end
@@ -32,11 +36,11 @@ module UECLunch
       JSON.generate({message: 'uec lunch'})
     end
 
-    get '/uec-lunch/nishishoku/:date' do
+    get '/uec-lunch/nishishoku/:date/menu.json' do
       get_nishishoku_menu(params[:date])
     end
 
-    get '/uec-lunch/harmonia/:date' do
+    get '/uec-lunch/harmonia/:date/menu.json' do
       get_harmonia_menu(params[:date])
     end
 
@@ -48,7 +52,7 @@ module UECLunch
             result = NishishokuMenu.find_by_date(date)
             result.to_json(:except => [:id])
           else
-            JSON.generate({:errors => [{:message => 'No such entry.'}]})
+            JSON.generate({:errors => [{:message => 'No such entry.', :code => 404}]})
           end
         else
           result.to_json(:except => [:id])
@@ -62,7 +66,7 @@ module UECLunch
             result = HarmoniaMenu.find_by_date(date)
             result.to_json(:except => [:id])
           else
-            JSON.generate({:errors => [{:message => 'No such entry.'}]})
+            JSON.generate({:errors => [{:message => 'No such entry.', :code => 404}]})
           end
         else
           result.to_json(:except => [:id])

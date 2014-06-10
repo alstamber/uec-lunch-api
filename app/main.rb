@@ -5,6 +5,7 @@ require 'nokogiri'
 require 'open-uri'
 require 'date'
 require 'active_record'
+require_relative './response.rb'
 
 module UECLunch
   ActiveRecord::Base.establish_connection(
@@ -43,19 +44,29 @@ module UECLunch
       def get_nishishoku_menu(date)
         result = NishishokuMenu.find_by_date(date)
         if result == nil
-          fetch_nishishoku_menu(date)
-          result = NishishokuMenu.find_by_date(date)
+          if fetch_nishishoku_menu(date)
+            result = NishishokuMenu.find_by_date(date)
+            result.to_json(:except => [:id])
+          else
+            JSON.generate({:errors => [{:message => 'No such entry.'}]})
+          end
+        else
+          result.to_json(:except => [:id])
         end
-        result.to_json(:except => [:id])
       end
 
       def get_harmonia_menu(date)
         result = HarmoniaMenu.find_by_date(date)
         if result == nil
-          fetch_harmonia_menu(date)
-          result = HarmoniaMenu.find_by_date(date)
+          if fetch_harmonia_menu(date)
+            result = HarmoniaMenu.find_by_date(date)
+            result.to_json(:except => [:id])
+          else
+            JSON.generate({:errors => [{:message => 'No such entry.'}]})
+          end
+        else
+          result.to_json(:except => [:id])
         end
-        result.to_json(:except => [:id])
       end
 
       def fetch_nishishoku_menu(date)
@@ -77,12 +88,17 @@ module UECLunch
             end
           end
         end
-        menu = NishishokuMenu.new
-        menu.date = date
-        menu.a_set = menu_array[0]
-        menu.b_set = menu_array[1]
-        menu.higawari = menu_array[2]
-        menu.save
+        if menu_array.length != 0
+          menu = NishishokuMenu.new
+          menu.date = date
+          menu.a_set = menu_array[0]
+          menu.b_set = menu_array[1]
+          menu.higawari = menu_array[2]
+          menu.save
+          true
+        else
+          false
+        end
       end
 
       def fetch_harmonia_menu(date)
@@ -104,15 +120,20 @@ module UECLunch
             end
           end
         end
-        menu = HarmoniaMenu.new
-        menu.date = date
-        menu.special = menu_array[0]
-        menu.higawari = menu_array[1]
-        menu.osusume = menu_array[2]
-        menu.s_lunch = menu_array[3]
-        menu.noodle = menu_array[4]
-        menu.s_dinner = menu_array[5]
-        menu.save
+        if menu_array.length != 0
+          menu = HarmoniaMenu.new
+          menu.date = date
+          menu.special = menu_array[0]
+          menu.higawari = menu_array[1]
+          menu.osusume = menu_array[2]
+          menu.s_lunch = menu_array[3]
+          menu.noodle = menu_array[4]
+          menu.s_dinner = menu_array[5]
+          menu.save
+          true
+        else
+          false
+        end
       end
     end
   end

@@ -1,0 +1,6 @@
+.bundle
+log/
+tmp/
+db/
+production.sqlite3
+

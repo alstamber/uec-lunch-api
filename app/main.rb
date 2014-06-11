@@ -10,8 +10,9 @@ module UECLunch
     Dir[File.dirname(__FILE__)+'/model/*.rb'].each {|f| require f}
 
     before do
-      ActiveRecord::Base.configurations = YAML.load_file('config.yml')['database']
-      ActiveRecord::Base.establish_connection(:development)
+      config = YAML.load_file('config.yml')['database']
+      db = config[ENV['RACK_ENV'] || 'development']
+      ActiveRecord::Base.establish_connection(db)
     end
 
     configure :development do

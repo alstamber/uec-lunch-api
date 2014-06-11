@@ -2,4 +2,4 @@ log: log/thin.log
 pid: tmp/pids/thin.pid
 daemonize: true
 servers: 1
-environment: production
+environment: development

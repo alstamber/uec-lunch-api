@@ -5,20 +5,15 @@ require 'nokogiri'
 require 'open-uri'
 require 'date'
 require 'active_record'
-
 module UECLunch
-  ActiveRecord::Base.establish_connection(
-    :adapter => 'sqlite3',
-    :database => 'production.sqlite3'
-  )
-
-  class NishishokuMenu < ActiveRecord::Base
-  end
-
-  class HarmoniaMenu < ActiveRecord::Base
-  end
-
   class Application < Sinatra::Base
+    Dir[File.dirname(__FILE__)+'/model/*.rb'].each {|f| require f}
+
+    before do
+      ActiveRecord::Base.configurations = YAML.load_file('config.yml')['database']
+      ActiveRecord::Base.establish_connection(:development)
+    end
+
     configure :development do
       register Sinatra::Reloader
     end

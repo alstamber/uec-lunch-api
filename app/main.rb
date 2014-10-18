@@ -32,14 +32,33 @@ module UECLunch
     end
 
     get '/uec-lunch/nishishoku/:date/menu.json' do
-      get_menu('nishishoku', params[:date]){|d| NishishokuMenu.find_by_date(d)}
+      date = params[:date]
+      if is_date_valid(date)
+        get_menu('nishishoku', date){|d| NishishokuMenu.find_by_date(d)}
+      else
+        JSON.generate({:errors => [{:message => 'Invalid date.', :code => 400}]})
+      end
     end
 
     get '/uec-lunch/harmonia/:date/menu.json' do
-      get_menu('harmonia', params[:date]){|d| HarmoniaMenu.find_by_date(d)}
+      date = params[:date]
+      if is_date_valid(date)
+        get_menu('harmonia', date){|d| HarmoniaMenu.find_by_date(d)}
+      else
+        JSON.generate({:errors => [{:message => 'Invalid date.', :code => 400}]})
+      end
     end
 
     helpers do
+      def is_date_valid(date)
+        begin
+          Date.strptime(str=date, format='%F')
+          true
+        rescue ArgumentError
+          false
+        end
+      end
+
       def get_menu(kind, date, &block)
         result = block.call(date)
         if result == nil
@@ -112,8 +131,8 @@ module UECLunch
         tbody = doc.xpath('//table[@cellpadding="5"]/tr')
         date_row = tbody[0]
         date_row.xpath('td').each_with_index do |td, i|
-          month = DateTime.parse(date).month
-          day = DateTime.parse(date).day
+          month = Date.parse(date).month
+          day = Date.parse(date).day
           if /#{month}月\s*#{day}日/ =~ td.content
             tbody.drop(1).each do |tr|
               menu_array.push(tr.xpath('td')[i].content)
